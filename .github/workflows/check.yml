@@ -1,0 +1,30 @@
+name: Check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - if: runner.os == 'macOS'
+        run: scripts/build-macos.sh
+      - if: runner.os == 'macOS'
+        run: dist/Qck.app/Contents/MacOS/qck --self-test
+      - if: runner.os == 'Windows'
+        run: cargo build --release --locked
+      - if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qck-windows-x64
+          path: |
+            target/release/qck.exe
+            config/config.lua
+            README.md
+          if-no-files-found: error
