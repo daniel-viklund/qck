@@ -3,7 +3,6 @@ use std::{
     collections::HashMap,
     ffi::c_void,
     mem::{size_of, zeroed},
-    path::PathBuf,
     ptr::null_mut,
 };
 use windows_sys::Win32::{
@@ -34,20 +33,9 @@ pub fn run(path: Option<&str>) -> Result<(), String> {
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
-    let config = if let Some(path) = path {
-        PathBuf::from(path)
-    } else {
-        let directory =
-            PathBuf::from(std::env::var_os("APPDATA").ok_or("APPDATA is unavailable")?).join("qck");
-        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-        let path = directory.join("config.lua");
-        if !path.exists() {
-            std::fs::write(&path, include_str!("../config/config.lua"))
-                .map_err(|e| e.to_string())?;
-        }
-        path
-    };
-    let source = std::fs::read_to_string(&config).map_err(|e| e.to_string())?;
+    let config = qck::config_path::resolve(path)?;
+    let source = std::fs::read_to_string(&config)
+        .map_err(|e| format!("Cannot read config {}: {e}", config.display()))?;
     let mut backend = Backend::default();
     let runtime = Runtime::start(source, "windows".into(), move |action| {
         backend.perform(action)

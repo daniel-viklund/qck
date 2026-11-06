@@ -9,19 +9,45 @@ qck.bind(window_mod .. "k", function() qck.window.snap("full") end)
 qck.bind(window_mod .. "j", function() qck.window.cycle_app() end)
 
 -- App launchers: focus an existing window, restore it if minimized, or launch.
--- Edit this table to add/remove bindings. Mac targets are bundle identifiers;
--- Windows targets are executable names or full paths (use [[C:\path\app.exe]]).
-local apps = {
-    f = { macos = "com.apple.finder", windows = "explorer.exe" },
-    h = { macos = "com.bitwarden.desktop", windows = "Bitwarden.exe" },
-    j = { macos = "org.mozilla.firefox", windows = "firefox.exe" },
-    k = { macos = "com.github.wez.wezterm", windows = "wezterm-gui.exe" },
-    l = { macos = "com.hnc.Discord", windows = "Discord.exe" },
-    r = { macos = "com.blackmagic-design.DaVinciResolve", windows = [[C:\Program Files\Blackmagic Design\DaVinci Resolve\Resolve.exe]] },
-    s = { macos = "com.spotify.client", windows = "Spotify.exe" },
-    -- GitHub Copilot's old comma binding is omitted: no installed app was found.
-    -- comma = { macos = "your.app.bundle.id", windows = [[C:\path\app.exe]] },
+-- Mac targets are bundle identifiers; Windows targets are executable names or
+-- full paths (use [[C:\path\app.exe]]).
+-- Select a profile per machine with QCK_PROFILE. Unset/default selects mac or
+-- windows automatically. Machine profiles override that platform's app bindings.
+-- Use false to disable a shortcut, or add any new key in the same format.
+local profiles = {
+    mac = {
+        f = { macos = "com.apple.finder" },
+        h = { macos = "com.bitwarden.desktop" },
+        j = { macos = "org.mozilla.firefox" },
+        k = { macos = "com.github.wez.wezterm" },
+        l = { macos = "com.hnc.Discord" },
+        r = { macos = "com.blackmagic-design.DaVinciResolve" },
+        s = { macos = "com.spotify.client" },
+        -- comma = { macos = "your.app.bundle.id" },
+    },
+    windows = {
+        f = { windows = "explorer.exe" },
+        h = { windows = "Bitwarden.exe" },
+        j = { windows = "chrome.exe" },
+        k = { windows = "wezterm-gui.exe" },
+        l = { windows = "Discord.exe" },
+        s = { windows = "Spotify.exe" },
+        -- comma = { windows = [[C:\path\app.exe]] },
+    },
+    mac_work = {
+        -- j = { macos = "com.google.Chrome" },
+        -- l = false, -- Disable Discord on this machine.
+    },
 }
+local base = mac and "mac" or "windows"
+local profile = qck.profile or "default"
+if profile == "default" then profile = base end
+local overrides = assert(profiles[profile], "Unknown QCK_PROFILE: " .. profile)
+local apps = {}
+for key, target in pairs(profiles[base]) do apps[key] = target end
+for key, target in pairs(overrides) do
+    if target == false then apps[key] = nil else apps[key] = target end
+end
 
 -- Sort bindings so shortcut IDs and diagnostic logs stay stable across starts.
 local keys = {}

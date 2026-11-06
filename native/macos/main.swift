@@ -213,10 +213,28 @@ if args.contains("--smoke-test") {
         print("Native hotkey registration and cleanup passed"); exit(0)
     } catch { log(String(describing: error)); exit(1) }
 }
-let configDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/qck")
-try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
-let defaultConfig = configDir.appendingPathComponent("config.lua")
-if !FileManager.default.fileExists(atPath: defaultConfig.path), let bundled = Bundle.main.url(forResource: "config", withExtension: "lua") { try FileManager.default.copyItem(at: bundled, to: defaultConfig) }
+func configPath() throws -> String {
+    if args.count > 1 && args[1] == "--config" {
+        guard args.count > 2 else { throw Failure("--config requires a path") }
+        return args[2]
+    }
+    if let path = ProcessInfo.processInfo.environment["QCK_CONFIG"], !path.isEmpty {
+        return path
+    }
+    guard let executable = Bundle.main.executableURL else { throw Failure("Cannot locate Qck executable") }
+    var directory = executable.deletingLastPathComponent()
+    while true {
+        let candidate = directory.appendingPathComponent("config/config.lua")
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: candidate.path, isDirectory: &isDirectory), !isDirectory.boolValue {
+            return candidate.path
+        }
+        let parent = directory.deletingLastPathComponent()
+        if parent.path == directory.path { break }
+        directory = parent
+    }
+    throw Failure("Cannot find config/config.lua above the executable. Keep Qck inside the repository, set QCK_CONFIG to your repository config's full path, or launch with --config <path>.")
+}
 let logDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Qck")
 try FileManager.default.createDirectory(at: logDirectory, withIntermediateDirectories: true)
 let logPath = logDirectory.appendingPathComponent("qck.log").path
@@ -224,6 +242,10 @@ let logPath = logDirectory.appendingPathComponent("qck.log").path
 if let size = (try? FileManager.default.attributesOfItem(atPath: logPath)[.size]) as? NSNumber, size.intValue > 2_000_000 { try? FileManager.default.removeItem(atPath: logPath) }
 freopen(logPath, "a", stderr)
 if NSRunningApplication.runningApplications(withBundleIdentifier: "dev.qck.app").count > 1 { log("Already running"); exit(1) }
-let delegate = AppDelegate(path: args.count > 2 && args[1] == "--config" ? args[2] : defaultConfig.path)
+let selectedConfig: String
+do { selectedConfig = try configPath() }
+catch { log(String(describing: error)); exit(1) }
+log("Config: \(selectedConfig)")
+let delegate = AppDelegate(path: selectedConfig)
 app.delegate = delegate
 app.run()

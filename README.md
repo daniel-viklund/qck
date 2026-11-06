@@ -27,9 +27,9 @@ in System Settings. Window actions need this permission; keyboard registration
 does not. The app does not change other apps' settings or start automatically
 at login.
 
-On first launch it copies the bundled config to `~/.config/qck/config.lua`,
-without overwriting an existing file. **Open config…** opens this file. Quit and
-reopen Qck after edits; live reload is not implemented yet. **Open log…** shows
+Qck reads `config/config.lua` directly from the repository containing
+`dist/Qck.app`. **Open config…** opens that shared file. Quit and reopen Qck
+after edits; live reload is not implemented yet. **Open log…** shows
 `~/Library/Logs/Qck/qck.log`, including failed actions and actions over 50 ms.
 
 The development build is ad-hoc signed. Rebuilding may require granting
@@ -53,11 +53,97 @@ cargo build --release --locked
 .\target\release\qck.exe
 ```
 
-The first run creates `%APPDATA%\qck\config.lua`. Pass a different config as the
-first argument if desired. This first Windows version runs in a console; errors
+Qck reads `config/config.lua` directly from the repository (or extracted artifact)
+containing `target\release\qck.exe`. Pass a different config as the first argument
+if desired. This first Windows version runs in a console; errors
 and slow actions appear there. Ctrl+C exits and releases the shortcuts. Restart
 to load config changes. App targets are executable names or full paths; use a
 full path if Windows cannot resolve a name such as `Spotify.exe`.
+
+## Finding Windows app targets
+
+Use the executable name, for example `chrome.exe` for Google Chrome. In Task
+Manager, right-click an app process and choose **Go to details** to see its `.exe`
+name, or **Open file location** to find the full executable path. The friendly
+name shown in the Processes tab (such as “Google Chrome”) is not the target.
+Chrome's multiple processes do not need separate bindings.
+
+For example, replace the `j` entry in the `windows` profile to use Chrome:
+
+```lua
+j = { windows = "chrome.exe" },
+```
+
+If focusing works but launching does not, use the actual full path from your
+machine, for example `windows = [[C:\Program Files\Google\Chrome\Application\chrome.exe]]`.
+Lua's `[[...]]` syntax preserves Windows backslashes.
+
+## Different bindings per machine
+
+Keep all bindings in the repository's `config/config.lua`. Qck reads this file
+directly; it does not copy it into a user config directory. Each machine can use
+its own checkout of the same repository and select a profile with `QCK_PROFILE`.
+Commit and pull config changes to share them between machines, then restart Qck.
+
+The config stores the existing app bindings in `mac` and `windows` profiles,
+selected automatically for the current platform. The `mac_work` profile overrides
+the Mac defaults; add more named profiles as needed. Edit their tables to replace
+or add app entries, or use `false` to disable a default binding:
+
+```lua
+mac_work = {
+    j = { macos = "com.google.Chrome" },
+    l = false, -- No Discord shortcut at work.
+},
+```
+
+Choose the profile once on each Windows machine in PowerShell:
+
+```powershell
+[Environment]::SetEnvironmentVariable("QCK_PROFILE", "windows", "User")
+$env:QCK_PROFILE = "windows" # Also select it in this terminal immediately.
+.\target\release\qck.exe
+```
+
+Use the name of any profile you have defined in the shared config. Restart Qck
+after changes; existing terminals retain their old environment, so open a fresh terminal or set
+`$env:QCK_PROFILE` before starting it. On macOS, `launchctl setenv QCK_PROFILE mac_work`
+selects a profile for subsequent GUI launches in the current login session;
+repeat after login to keep selecting that profile.
+
+`qck.profile` exposes `QCK_PROFILE` to Lua, defaulting to `"default"` when unset or
+empty; the example maps `default` to `mac` on macOS and `windows` on Windows.
+Profile names are case-sensitive. The example rejects unknown profiles
+to catch typos. Each override replaces a whole key's app entry; include both
+platform targets when sharing a profile across operating systems.
+
+Config lookup on both platforms uses this order:
+
+1. An explicit launch argument: `qck.exe <path>` on Windows or
+   `qck --config <path>` on macOS.
+2. The `QCK_CONFIG` environment variable, if set and nonempty.
+3. The nearest `config/config.lua` found by walking up from the executable's
+   directory. This works regardless of your terminal's current directory.
+
+If you move the executable or Mac app outside the repository, set `QCK_CONFIG`
+to the full path of the repository config. For example, on Windows:
+
+```powershell
+[Environment]::SetEnvironmentVariable("QCK_CONFIG", "D:\repos\qck\config\config.lua", "User")
+$env:QCK_CONFIG = "D:\repos\qck\config\config.lua"
+```
+
+On macOS, use `launchctl setenv QCK_CONFIG /absolute/path/to/qck/config/config.lua`
+for GUI launches in the current login session, or launch with `--config`.
+`QCK_CONFIG` selects the file; `QCK_PROFILE` selects bindings inside that file.
+An explicit path that cannot be read produces an error instead of falling back.
+If no repository config is found, startup reports how to specify its path.
+
+After rebuilding, old `%APPDATA%\qck\config.lua` and `~/.config/qck/config.lua`
+files are no longer loaded automatically. Move any custom bindings you want to
+keep into the repository config. Old files are left untouched. You can validate
+without running actions using `qck.exe check config\config.lua windows` from the
+repository root.
 
 ## Default shortcuts
 
@@ -68,20 +154,18 @@ full path if Windows cannot resolve a name such as `Spotify.exe`.
 | Cycle focused process's windows | Ctrl+Option+J | Ctrl+Win+J |
 | Focus / launch Finder or Explorer | Ctrl+Cmd+F | Ctrl+Alt+F |
 | Focus / launch Bitwarden | Ctrl+Cmd+H | Ctrl+Alt+H |
-| Focus / launch Firefox | Ctrl+Cmd+J | Ctrl+Alt+J |
+| Focus / launch Firefox (Mac) or Chrome (Windows) | Ctrl+Cmd+J | Ctrl+Alt+J |
 | Focus / launch WezTerm | Ctrl+Cmd+K | Ctrl+Alt+K |
 | Focus / launch Discord | Ctrl+Cmd+L | Ctrl+Alt+L |
-| Focus / launch DaVinci Resolve | Ctrl+Cmd+R | Ctrl+Alt+R |
+| Focus / launch DaVinci Resolve | Ctrl+Cmd+R | — |
 | Focus / launch Spotify | Ctrl+Cmd+S | Ctrl+Alt+S |
 
-Edit the `apps` table in your live config to customize launchers. The earlier
-GitHub Copilot comma shortcut is left unbound because that app was not found
+Edit the `mac` or `windows` profile in your live config to customize launchers.
+The earlier GitHub Copilot comma shortcut is left unbound because that app was not found
 on this Mac; the table includes a commented example for adding it later.
-Existing configs are never overwritten by the app, so changing the repository
-example alone does not update your live bindings. If your Windows config came
-from an earlier build, change its `app_mod` Windows value from `"ctrl+shift+win+"`
-to `"ctrl+alt+"`, then restart Qck. Alternatively, test the supplied config directly:
-`target\release\qck.exe config\config.lua`.
+Repository config edits take effect after restarting Qck. If you explicitly load
+an older config, change its `app_mod` Windows value from `"ctrl+shift+win+"`
+to `"ctrl+alt+"` to match the current shortcuts.
 
 Windows app shortcuts use Ctrl+Alt. `RegisterHotKey` does not distinguish
 left/right Alt, so these bindings can also match AltGr combinations on some
@@ -90,6 +174,19 @@ the failed shortcut and releases partial registrations.
 Mac letters refer to physical ANSI key positions (also shared by many ISO
 layouts); Windows letters use virtual key codes. Arbitrary layout-aware key
 names, side-specific modifiers, and ISO punctuation are not yet implemented.
+
+### Windows Live Captions shortcut conflict
+
+Windows can reserve Ctrl+Win+L for Live Captions, preventing Qck from starting.
+A workaround verified on the development PC is to append uppercase `L` to the
+`DisabledHotkeys` string value under
+`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`,
+then restart Explorer and Qck. Back up the original value and preserve any letters
+already present. This also suppresses Explorer's Ctrl+Alt+Shift+Win+L registration;
+restarting Explorer briefly interrupts the taskbar and can close folder windows.
+Restore the original value (or remove it if it did not exist), then restart
+Explorer to undo the change. This is a Windows setting, not something Qck changes
+automatically, and behavior may differ between Windows builds.
 
 ## Lua API
 
@@ -108,7 +205,8 @@ qck.bind(mac and "ctrl+alt+j" or "ctrl+win+j", function()
 end)
 ```
 
-`qck.platform` is `macos` or `windows`. Register bindings only at startup and
+`qck.platform` is `macos` or `windows`; `qck.profile` is the selected machine
+profile (see above). Register bindings only at startup and
 call actions inside callbacks. Supported keys: letters, digits, `comma`, `space`,
 `escape`, `return`, `tab`. Supported modifiers: `ctrl`, `alt`, `shift`, and
 `cmd` (Mac) or `win` (Windows); `control`, `option`, `command` are aliases.

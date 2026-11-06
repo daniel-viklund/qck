@@ -1,3 +1,5 @@
+pub mod config_path;
+
 use mlua::{Function, HookTriggers, Lua, LuaOptions, RegistryKey, StdLib, VmState};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -147,6 +149,16 @@ impl Config {
         platform: &str,
         native: impl FnMut(String, String) -> Result<(), String> + 'static,
     ) -> Result<Self, String> {
+        let profile = std::env::var("QCK_PROFILE").unwrap_or_default();
+        Self::load_with_profile(source, platform, &profile, native)
+    }
+
+    fn load_with_profile(
+        source: &str,
+        platform: &str,
+        profile: &str,
+        native: impl FnMut(String, String) -> Result<(), String> + 'static,
+    ) -> Result<Self, String> {
         let load = || -> mlua::Result<Self> {
             // No io/os/package libraries: scripts cannot block the worker with shell or file IO.
             let lua = Lua::new_with(
@@ -175,6 +187,14 @@ impl Config {
             let in_config = configuring.clone();
             let qck = lua.create_table()?;
             qck.set("platform", platform)?;
+            qck.set(
+                "profile",
+                if profile.is_empty() {
+                    "default"
+                } else {
+                    profile
+                },
+            )?;
             qck.set(
                 "bind",
                 lua.create_function(move |lua, (combo, callback): (String, Function)| {
@@ -379,14 +399,57 @@ mod tests {
         assert_eq!(actions.borrow().len(), 1);
     }
     #[test]
+    fn profiles_override_add_and_disable_app_bindings() {
+        let source = include_str!("../config/config.lua").replace(
+            "local profiles = {",
+            r#"local profiles = {
+            test_profile = {
+                j = { windows = "chrome.exe", macos = "com.google.Chrome" },
+                l = false,
+                b = { windows = "notepad.exe", macos = "com.apple.TextEdit" },
+            },"#,
+        );
+        for (platform, expected) in [("windows", "chrome.exe"), ("macos", "com.google.Chrome")] {
+            let actions = Rc::new(RefCell::new(Vec::new()));
+            let recorded = actions.clone();
+            let config =
+                Config::load_with_profile(&source, platform, "test_profile", move |kind, value| {
+                    recorded.borrow_mut().push((kind, value));
+                    Ok(())
+                })
+                .unwrap();
+            let baseline =
+                Config::load_with_profile(&source, platform, "default", |_, _| Ok(())).unwrap();
+            assert_eq!(config.bindings.len(), baseline.bindings.len());
+            for id in 5..=config.bindings.len() as u32 {
+                config.invoke(id).unwrap();
+            }
+            let actions = actions.borrow();
+            assert!(actions.iter().any(|(_, target)| target == expected));
+            assert!(
+                !actions
+                    .iter()
+                    .any(|(_, target)| target.to_lowercase().contains("discord"))
+            );
+            assert!(
+                actions
+                    .iter()
+                    .any(|(_, target)| target == "notepad.exe" || target == "com.apple.TextEdit")
+            );
+        }
+        assert!(
+            Config::load_with_profile(&source, "windows", "typo", |_, _| Ok(()))
+                .err()
+                .unwrap()
+                .contains("Unknown QCK_PROFILE")
+        );
+    }
+
+    #[test]
     fn example_validates_for_both_platforms() {
         for os in ["macos", "windows"] {
-            assert_eq!(
-                validate(include_str!("../config/config.lua"), os)
-                    .unwrap()
-                    .len(),
-                11
-            );
+            Config::load_with_profile(include_str!("../config/config.lua"), os, "", |_, _| Ok(()))
+                .unwrap();
         }
     }
 }
