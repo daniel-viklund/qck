@@ -17,6 +17,8 @@ jobs:
         run: scripts/build-macos.sh
       - if: runner.os == 'macOS'
         run: dist/Qck.app/Contents/MacOS/qck --self-test
+      - if: runner.os == 'macOS'
+        run: scripts/test-macos-window-adjustment.sh
       - if: runner.os == 'Windows'
         run: cargo build --release --locked
       - if: runner.os == 'Windows'

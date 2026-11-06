@@ -122,6 +122,11 @@ events waiting more than 500 ms are skipped instead of replaying old actions.
 
 ## Window behavior and current limits
 
+- Snapping temporarily suspends `AXEnhancedUserInterface` when enabled, then
+  restores it even if a frame write fails. This avoids Firefox's animated
+  position/size writes interrupting each other and requiring a second shortcut.
+  The optional attribute is left alone when VoiceOver or Switch Control is on,
+  or when it is unsupported. Failures to change or restore it are logged.
 - On macOS, a running app without an accessible standard window receives an
   open/reopen request through Launch Services, as it would when opened from the
   Dock. The same fallback runs if a discovered window can no longer be focused.
@@ -159,6 +164,7 @@ dist/Qck.app/Contents/MacOS/qck --self-test
 dist/Qck.app/Contents/MacOS/qck --smoke-test
 dist/Qck.app/Contents/MacOS/qck --diagnose
 ./scripts/test-macos-reopen.sh
+./scripts/test-macos-window-adjustment.sh
 ```
 
 `--smoke-test` registers and releases Ctrl+Cmd+Shift+9 without running actions.

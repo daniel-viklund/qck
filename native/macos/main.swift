@@ -88,10 +88,23 @@ func perform(_ action: Action) throws {
         }
         guard let screen = screens.max(by: { a, b in let x = rect.intersection(a), y = rect.intersection(b); return x.width * x.height < y.width * y.height }) else { throw Failure("No display work area") }
         let destination = snapped(screen, action.value)
-        var point = destination.origin, size = destination.size
-        try set(window, kAXPositionAttribute, AXValueCreate(.cgPoint, &point)!)
-        try set(window, kAXSizeAttribute, AXValueCreate(.cgSize, &size)!)
-        try set(window, kAXPositionAttribute, AXValueCreate(.cgPoint, &point)!)
+        let assistiveTechnologyEnabled = DispatchQueue.main.sync {
+            NSWorkspace.shared.isVoiceOverEnabled || NSWorkspace.shared.isSwitchControlEnabled
+        }
+        try withImmediateWindowAdjustment(
+            assistiveTechnologyEnabled: assistiveTechnologyEnabled,
+            readEnhancedUI: { (try? attribute(app, "AXEnhancedUserInterface")) as? Bool },
+            writeEnhancedUI: { enabled in
+                AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString,
+                                             enabled ? kCFBooleanTrue : kCFBooleanFalse) == .success
+            },
+            report: log
+        ) {
+            var point = destination.origin, size = destination.size
+            try set(window, kAXPositionAttribute, AXValueCreate(.cgPoint, &point)!)
+            try set(window, kAXSizeAttribute, AXValueCreate(.cgSize, &size)!)
+            try set(window, kAXPositionAttribute, AXValueCreate(.cgPoint, &point)!)
+        }
     } else if action.kind == "cycle" {
         guard let all = try attribute(app, kAXWindowsAttribute) as? [AXUIElement] else { throw Failure("Application did not provide a window list") }
         let windows = all.filter { ((try? attribute($0, kAXSubroleAttribute)) as? String) == kAXStandardWindowSubrole }
