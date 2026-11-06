@@ -1,8 +1,7 @@
 -- Runs once at startup. Callbacks execute on a dedicated worker, never an input hook.
 local mac = qck.platform == "macos"
 local window_mod = mac and "ctrl+alt+" or "ctrl+win+"
--- RegisterHotKey cannot distinguish left/right Alt. Avoid Ctrl+Alt / AltGr on Windows.
-local app_mod = mac and "ctrl+cmd+" or "ctrl+shift+win+"
+local app_mod = mac and "ctrl+cmd+" or "ctrl+alt+"
 
 qck.bind(window_mod .. "h", function() qck.window.snap("left") end)
 qck.bind(window_mod .. "l", function() qck.window.snap("right") end)

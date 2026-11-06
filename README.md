@@ -66,23 +66,27 @@ full path if Windows cannot resolve a name such as `Spotify.exe`.
 | Left / right half | Ctrl+Option+H / L | Ctrl+Win+H / L |
 | Fill current monitor's work area | Ctrl+Option+K | Ctrl+Win+K |
 | Cycle focused process's windows | Ctrl+Option+J | Ctrl+Win+J |
-| Focus / launch Finder or Explorer | Ctrl+Cmd+F | Ctrl+Shift+Win+F |
-| Focus / launch Bitwarden | Ctrl+Cmd+H | Ctrl+Shift+Win+H |
-| Focus / launch Firefox | Ctrl+Cmd+J | Ctrl+Shift+Win+J |
-| Focus / launch WezTerm | Ctrl+Cmd+K | Ctrl+Shift+Win+K |
-| Focus / launch Discord | Ctrl+Cmd+L | Ctrl+Shift+Win+L |
-| Focus / launch DaVinci Resolve | Ctrl+Cmd+R | Ctrl+Shift+Win+R |
-| Focus / launch Spotify | Ctrl+Cmd+S | Ctrl+Shift+Win+S |
+| Focus / launch Finder or Explorer | Ctrl+Cmd+F | Ctrl+Alt+F |
+| Focus / launch Bitwarden | Ctrl+Cmd+H | Ctrl+Alt+H |
+| Focus / launch Firefox | Ctrl+Cmd+J | Ctrl+Alt+J |
+| Focus / launch WezTerm | Ctrl+Cmd+K | Ctrl+Alt+K |
+| Focus / launch Discord | Ctrl+Cmd+L | Ctrl+Alt+L |
+| Focus / launch DaVinci Resolve | Ctrl+Cmd+R | Ctrl+Alt+R |
+| Focus / launch Spotify | Ctrl+Cmd+S | Ctrl+Alt+S |
 
 Edit the `apps` table in your live config to customize launchers. The earlier
 GitHub Copilot comma shortcut is left unbound because that app was not found
 on this Mac; the table includes a commented example for adding it later.
 Existing configs are never overwritten by the app, so changing the repository
-example alone does not update your live bindings.
+example alone does not update your live bindings. If your Windows config came
+from an earlier build, change its `app_mod` Windows value from `"ctrl+shift+win+"`
+to `"ctrl+alt+"`, then restart Qck. Alternatively, test the supplied config directly:
+`target\release\qck.exe config\config.lua`.
 
-Windows app shortcuts deliberately avoid Ctrl+Alt: `RegisterHotKey` cannot
-distinguish left Alt from AltGr. OS-reserved or already registered combinations
-may fail. Startup reports the failed shortcut and releases partial registrations.
+Windows app shortcuts use Ctrl+Alt. `RegisterHotKey` does not distinguish
+left/right Alt, so these bindings can also match AltGr combinations on some
+layouts. OS-reserved or already registered combinations may fail. Startup reports
+the failed shortcut and releases partial registrations.
 Mac letters refer to physical ANSI key positions (also shared by many ISO
 layouts); Windows letters use virtual key codes. Arbitrary layout-aware key
 names, side-specific modifiers, and ISO punctuation are not yet implemented.
@@ -91,7 +95,7 @@ names, side-specific modifiers, and ISO punctuation are not yet implemented.
 
 ```lua
 local mac = qck.platform == "macos"
-qck.bind(mac and "ctrl+cmd+b" or "ctrl+shift+win+b", function()
+qck.bind(mac and "ctrl+cmd+b" or "ctrl+alt+b", function()
     qck.app.focus_or_launch(mac and "org.mozilla.firefox" or "firefox.exe")
 end)
 
