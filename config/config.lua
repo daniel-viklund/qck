@@ -10,7 +10,7 @@ qck.bind(window_mod .. "j", function() qck.window.cycle_app() end)
 
 -- App launchers: focus an existing window, restore it if minimized, or launch.
 -- Mac targets are bundle identifiers; Windows targets are executable names or
--- full paths (use [[C:\path\app.exe]]).
+-- full paths (use [[C:\path\app.exe]]). Windows discovers .exe paths at startup.
 -- Select a profile per machine with QCK_PROFILE. Unset/default selects mac or
 -- windows automatically. Machine profiles override that platform's app bindings.
 -- Use false to disable a shortcut, or add any new key in the same format.

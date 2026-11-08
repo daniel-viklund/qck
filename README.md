@@ -57,8 +57,21 @@ Qck reads `config/config.lua` directly from the repository (or extracted artifac
 containing `target\release\qck.exe`. Pass a different config as the first argument
 if desired. This first Windows version runs in a console; errors
 and slow actions appear there. Ctrl+C exits and releases the shortcuts. Restart
-to load config changes. App targets are executable names or full paths; use a
-full path if Windows cannot resolve a name such as `Spotify.exe`.
+to load config changes. App targets are executable names or full paths.
+
+On startup, Qck discovers executable paths in the background. It checks registered
+apps, Start Menu shortcut targets, `PATH`, and installation folders (including
+registered custom locations), then recursively searches local fixed drives for
+portable apps. Names such as `Bitwarden.exe` are matched without regard to case
+and cached in memory until Qck exits. Normal Windows name resolution takes
+precedence; discovered installed apps take precedence over the later drive scan.
+
+Discovery runs at background CPU/disk priority, separately from shortcuts and app
+actions. Its progress and resolved launch paths appear in the console. A large
+drive may take time: if an unresolved shortcut says discovery is still running,
+retry after the search finds the app. The drive scan skips inaccessible folders,
+symlinks/junctions, and removable or mapped network drives. Restart Qck to discover
+new or moved apps. Full paths work immediately and select a specific installation.
 
 ## Finding Windows app targets
 
@@ -74,8 +87,8 @@ For example, replace the `j` entry in the `windows` profile to use Chrome:
 j = { windows = "chrome.exe" },
 ```
 
-If focusing works but launching does not, use the actual full path from your
-machine, for example `windows = [[C:\Program Files\Google\Chrome\Application\chrome.exe]]`.
+If discovery cannot find an app, or you want a particular installation, use its
+actual full path, for example `windows = [[C:\Program Files\Google\Chrome\Application\chrome.exe]]`.
 Lua's `[[...]]` syntax preserves Windows backslashes.
 
 ## Different bindings per machine

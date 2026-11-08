@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     ffi::c_void,
     mem::{size_of, zeroed},
+    os::windows::ffi::OsStrExt,
     ptr::null_mut,
 };
 use windows_sys::Win32::{
@@ -36,7 +37,10 @@ pub fn run(path: Option<&str>) -> Result<(), String> {
     let config = qck::config_path::resolve(path)?;
     let source = std::fs::read_to_string(&config)
         .map_err(|e| format!("Cannot read config {}: {e}", config.display()))?;
-    let mut backend = Backend::default();
+    let mut backend = Backend {
+        apps: crate::windows_launch::AppResolver::start(),
+        ..Backend::default()
+    };
     let runtime = Runtime::start(source, "windows".into(), move |action| {
         backend.perform(action)
     })?;
@@ -168,6 +172,7 @@ fn activate(window: HWND) -> Result<(), String> {
 #[derive(Default)]
 struct Backend {
     orders: HashMap<u32, Vec<usize>>,
+    apps: crate::windows_launch::AppResolver,
 }
 impl Backend {
     fn perform(&mut self, action: Action) -> Result<(), String> {
@@ -186,26 +191,20 @@ impl Backend {
                     }
                 }
             }
-            let target = wide(&action.value);
             let operation = wide("open");
-            let result = unsafe {
-                ShellExecuteW(
-                    null_mut(),
-                    operation.as_ptr(),
-                    target.as_ptr(),
-                    std::ptr::null(),
-                    std::ptr::null(),
-                    SW_SHOWNORMAL,
-                )
-            } as isize;
-            return if result > 32 {
-                Ok(())
-            } else {
-                Err(format!(
-                    "Cannot launch {} (ShellExecute {result}); use its full executable path",
-                    action.value
-                ))
-            };
+            return self.apps.launch(&action.value, |path| {
+                let target: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+                unsafe {
+                    ShellExecuteW(
+                        null_mut(),
+                        operation.as_ptr(),
+                        target.as_ptr(),
+                        std::ptr::null(),
+                        std::ptr::null(),
+                        SW_SHOWNORMAL,
+                    ) as isize
+                }
+            });
         }
         let window = action.context.window as usize as HWND;
         unsafe {
