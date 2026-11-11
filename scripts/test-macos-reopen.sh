@@ -14,6 +14,6 @@ cat > "$fixture/Contents/Info.plist" <<'PLIST'
 <key>CFBundlePackageType</key><string>APPL</string>
 </dict></plist>
 PLIST
-swiftc -swift-version 5 -parse-as-library native/macos/tests/ReopenFixture.swift -o "$fixture/Contents/MacOS/fixture"
-swiftc -swift-version 5 -parse-as-library native/macos/ApplicationLauncher.swift native/macos/tests/ReopenTest.swift -o "$test_dir/test-reopen"
+swiftc -swift-version 5 -target "$(uname -m)-apple-macosx13.0" -parse-as-library native/macos/tests/ReopenFixture.swift -o "$fixture/Contents/MacOS/fixture"
+swiftc -swift-version 5 -target "$(uname -m)-apple-macosx13.0" -parse-as-library native/macos/ApplicationLauncher.swift native/macos/tests/ReopenTest.swift -o "$test_dir/test-reopen"
 "$test_dir/test-reopen" "$fixture"

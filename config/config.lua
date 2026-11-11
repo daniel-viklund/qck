@@ -9,7 +9,8 @@ qck.bind(window_mod .. "k", function() qck.window.snap("full") end)
 qck.bind(window_mod .. "j", function() qck.window.cycle_app() end)
 
 -- App launchers: focus an existing window, restore it if minimized, or launch.
--- Mac targets are bundle identifiers; Windows targets are executable names or
+-- Mac targets are bundle identifiers or app names (with or without .app).
+-- Windows targets are executable names or
 -- full paths (use [[C:\path\app.exe]]). Windows discovers .exe paths at startup.
 -- Select a profile per machine with QCK_PROFILE. Unset/default selects mac or
 -- windows automatically. Machine profiles override that platform's app bindings.
@@ -35,8 +36,17 @@ local profiles = {
         -- comma = { windows = [[C:\path\app.exe]] },
     },
     mac_work = {
-        -- j = { macos = "com.google.Chrome" },
-        -- l = false, -- Disable Discord on this machine.
+        f = { macos = "com.apple.finder" },
+        h = { macos = "KeypassXC" },
+        y = { macos = "com.bitwarden.desktop" },
+        k = { macos = "com.github.wez.wezterm" },
+        s = { macos = "com.spotify.client" },
+        j = { macos = "Microsoft Edge" },
+        i = { macos = "Royal TSX" },
+        o = { macos = "Microsoft Outlook" },
+        d = { macos = "Microsoft To Do"},
+        l = {macos = "Microsoft Teams" },
+        comma = { macos = "GitHub Copilot" },
     },
 }
 local base = mac and "mac" or "windows"

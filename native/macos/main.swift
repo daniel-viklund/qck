@@ -51,8 +51,8 @@ func focus(_ window: AXUIElement, app: AXUIElement, pid: pid_t) throws {
 }
 func perform(_ action: Action) throws {
     if action.kind == "app" {
-        let identifier = action.value
-        let running = DispatchQueue.main.sync { NSRunningApplication.runningApplications(withBundleIdentifier: identifier).first }
+        let application = try resolveApplication(action.value)
+        let running = DispatchQueue.main.sync { NSRunningApplication.runningApplications(withBundleIdentifier: application.identifier).first }
         if let running {
             let app = AXUIElementCreateApplication(running.processIdentifier)
             AXUIElementSetMessagingTimeout(app, 0.25)
@@ -62,13 +62,13 @@ func perform(_ action: Action) throws {
                     try focus(target, app: app, pid: running.processIdentifier)
                 } catch {
                     // The window may have disappeared or become inaccessible since discovery.
-                    openOrReopenApplication(identifier: identifier, reason: "window focus failed: \(error)")
+                    openOrReopenApplication(application, reason: "window focus failed: \(error)")
                 }
             } else {
-                openOrReopenApplication(identifier: identifier, reason: "running without an accessible standard window")
+                openOrReopenApplication(application, reason: "running without an accessible standard window")
             }
         } else {
-            openOrReopenApplication(identifier: identifier, reason: "not running")
+            openOrReopenApplication(application, reason: "not running")
         }
         return
     }

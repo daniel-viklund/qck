@@ -73,6 +73,21 @@ retry after the search finds the app. The drive scan skips inaccessible folders,
 symlinks/junctions, and removable or mapped network drives. Restart Qck to discover
 new or moved apps. Full paths work immediately and select a specific installation.
 
+## Finding macOS app targets
+
+Mac targets accept a bundle identifier or an app's filename, with or without
+`.app`. For example:
+
+```lua
+j = { macos = "Microsoft Teams.app" },
+```
+
+App names are matched case-insensitively in `~/Applications`, `/Applications`,
+`/System/Applications`, and `/System/Library/CoreServices`, including subfolders
+but not apps nested inside other app bundles. Missing or ambiguous names report
+an error in the log. Use a bundle identifier for apps installed elsewhere or to
+avoid ambiguous names. Both forms use the same focus/launch/reopen behavior.
+
 ## Finding Windows app targets
 
 Use the executable name, for example `chrome.exe` for Google Chrome. In Task
