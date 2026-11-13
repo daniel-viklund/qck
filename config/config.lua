@@ -37,7 +37,7 @@ local profiles = {
     },
     mac_work = {
         f = { macos = "com.apple.finder" },
-        h = { macos = "KeypassXC" },
+        h = { macos = "KeepassXC" },
         y = { macos = "com.bitwarden.desktop" },
         k = { macos = "com.github.wez.wezterm" },
         s = { macos = "com.spotify.client" },
